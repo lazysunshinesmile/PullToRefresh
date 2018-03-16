@@ -1,4 +1,4 @@
-package com.xiangsun.pull_to_refresh_sun;
+package com.xiangsun.pullToRefreshSun;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
