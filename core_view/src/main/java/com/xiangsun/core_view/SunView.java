@@ -10,7 +10,7 @@ import android.view.ViewGroup;
 import android.widget.Scroller;
 
 /**
- * Created by admin on 2018/3/15.
+ * Created by Sun on 2018/3/15.
  */
 
 public class SunView extends ViewGroup {
@@ -19,16 +19,25 @@ public class SunView extends ViewGroup {
 
     private View mSonView;
 
-    private int lastY;
-
-    private boolean needAnimote = false;
+    //上一次下拉距离
+    private int mLastY;
+    private boolean mNeedRefresh;
 
     private Scroller mScroller;
+    private SunViewListener mSunViewListener;
 
+
+    /**
+     * view当前的状态
+     * 0--当前无状态
+     * -1--刷新状态
+     * 1--
+     */
     private static int STATE = 0;
 
-    private SunViewListener sunViewListener;
-
+    /**
+     * 距离顶端的距离
+     */
     private static int TOP_DISTANCE = 100;
 
     public SunView(Context context) {
@@ -37,20 +46,20 @@ public class SunView extends ViewGroup {
 
     public SunView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
+        mScroller = new Scroller(getContext());
     }
 
     public SunView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
     }
 
-    public void setSunViewListener(SunViewListener sunViewListener) {
-        this.sunViewListener = sunViewListener;
+    public void setSunViewListener(SunViewListener mSunViewListener) {
+        this.mSunViewListener = mSunViewListener;
     }
 
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         Log.e(TAG, "onLayout: nihao");
-        mScroller = new Scroller(getContext());
         for (int i = 0; i < getChildCount(); i++) {
             View childView = getChildAt(i);
             mSonView = childView;
@@ -61,7 +70,6 @@ public class SunView extends ViewGroup {
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
         Log.e(TAG, "dispatchTouchEvent: ");
-
         return super.dispatchTouchEvent(ev);
     }
 
@@ -72,10 +80,10 @@ public class SunView extends ViewGroup {
 
         if (scrollDirection(ev) == -1 && !canChildScrollDown()) {
             //展示刷新动画
-            needAnimote = true;
+            mNeedRefresh = true;
             return true;
         } else {
-            needAnimote = true;
+            mNeedRefresh = true;
             return false;
         }
     }
@@ -84,28 +92,39 @@ public class SunView extends ViewGroup {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         Log.e(TAG, "onTouchEvent: 到里面了");
-        if (needAnimote)
+        if (mNeedRefresh)
             scrollWithFinger(event);
 
         return false;
     }
 
 
+    /**
+     * 检测子View需要滑动吗
+     *
+     * @return
+     */
     private boolean canChildScrollDown() {
         return mSonView.canScrollVertically(-1);
     }
 
+    /**
+     * 确定滑动方向
+     *
+     * @param ev
+     * @return
+     */
     private int scrollDirection(MotionEvent ev) {
         switch (ev.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                lastY = (int) ev.getY();
+                mLastY = (int) ev.getY();
                 break;
             case MotionEvent.ACTION_MOVE:
                 float currentY = ev.getY();
-                if (currentY - lastY > 8) {
+                if (currentY - mLastY > 8) {
                     //滑动手势，向下，屏幕向上
                     return -1;
-                } else if (currentY - lastY < -8) {
+                } else if (currentY - mLastY < -8) {
                     //滑动手势，向上，屏幕向下
                     return 1;
                 }
@@ -129,40 +148,55 @@ public class SunView extends ViewGroup {
         }
     }
 
+    /**
+     * 让子view 随手指滑动
+     *
+     * @param ev
+     */
     private void scrollWithFinger(MotionEvent ev) {
         int y = (int) ev.getY();
         switch (ev.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                lastY = (int) ev.getY();
+                mLastY = (int) ev.getY();
                 break;
             case MotionEvent.ACTION_MOVE:
                 if (STATE != -1) {
-                    int offsetY = y - lastY;
+                    int offsetY = y - mLastY;
                     scrollBy(0, (int) -Math.log1p(offsetY));
                 }
                 break;
             case MotionEvent.ACTION_UP:
-                moveUp();
+                moveUp(ev);
                 break;
         }
     }
 
-
+    /**
+     * 刷新结束
+     */
     public void refreshOver() {
         STATE = 0;
         mScroller.startScroll(
-                getScrollX(),
-                getScrollY(),
-                -getScrollX(),
-                -getScrollY());
+                    getScrollX(),
+                    getScrollY(),
+                    -getScrollX(),
+                    -getScrollY());
+        invalidate();
     }
 
-    private void moveUp() {
+    /**
+     * 手指抬起的动作
+     *
+     * @param ev
+     */
+    private void moveUp(MotionEvent ev) {
         // 手指离开时，执行滑动过程
         int scrollY = getScrollY();
-        if (getScrollY() < -TOP_DISTANCE) {
+        int y = (int) ev.getY();
+        int offsetY = y - mLastY;
+        if (offsetY > TOP_DISTANCE * 3) {
+            //刷新状态
             STATE = -1;
-            Log.d(TAG, "scrollWithFinger: " + getScrollY());
             scrollY = getScrollY() + TOP_DISTANCE;
             mScroller.startScroll(
                     getScrollX(),
@@ -172,6 +206,7 @@ public class SunView extends ViewGroup {
             invalidate();
             startRefresh();
         } else {
+            //恢复
             mScroller.startScroll(
                     getScrollX(),
                     getScrollY(),
@@ -182,10 +217,13 @@ public class SunView extends ViewGroup {
 
     }
 
-
+    /**
+     * 调用设置的回掉，开始刷新
+     *
+     */
     private void startRefresh() {
-        sunViewListener.onRefresh();
 
+        mSunViewListener.onRefresh();
     }
 
 }
