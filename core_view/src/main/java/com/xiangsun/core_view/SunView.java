@@ -1,12 +1,15 @@
 package com.xiangsun.core_view;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.Scroller;
 
 /**
@@ -17,7 +20,10 @@ public class SunView extends ViewGroup {
 
     private static final String TAG = "SunView";
 
+    private Context mContext;
+
     private View mSonView;
+    private View mTopView;
 
     //上一次下拉距离
     private int mLastY;
@@ -38,7 +44,7 @@ public class SunView extends ViewGroup {
     /**
      * 距离顶端的距离
      */
-    private static int TOP_DISTANCE = 100;
+    private int mTopDistance = 300;
 
     public SunView(Context context) {
         super(context);
@@ -47,6 +53,7 @@ public class SunView extends ViewGroup {
     public SunView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         mScroller = new Scroller(getContext());
+        mContext = context;
     }
 
     public SunView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
@@ -57,6 +64,13 @@ public class SunView extends ViewGroup {
         this.mSunViewListener = mSunViewListener;
     }
 
+    public void setTopView(View topView) {
+        this.mTopView = topView;
+
+
+
+    }
+
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         Log.e(TAG, "onLayout: nihao");
@@ -64,6 +78,21 @@ public class SunView extends ViewGroup {
             View childView = getChildAt(i);
             mSonView = childView;
             childView.layout(l, t, r, b);
+        }
+        RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT);
+        if(mSonView == null) {
+            Log.d(TAG, "setTopView: nllllllllllll");
+        }
+        layoutParams.addRule(RelativeLayout.ABOVE, mSonView.getId());
+        if(mTopView !=null) {
+            if(mTopView.getParent() !=null)
+                ((ViewGroup)mTopView.getParent()).removeView(mTopView);
+            mTopView.layout(l, -mTopView.getHeight(), r,0);
+            addView(mTopView);
+        }else {
+            Log.d(TAG, "onLayout: mtopview is null");
         }
     }
 
@@ -94,10 +123,18 @@ public class SunView extends ViewGroup {
         Log.e(TAG, "onTouchEvent: 到里面了");
         if (mNeedRefresh)
             scrollWithFinger(event);
+        if(mTopView != null) {
+            Log.d(TAG, "onTouchEvent: " +getLeft() + ":"+getRight()+":"+ mTopView.getTop()+ ":" + mTopView.getBottom());
+        }else {
+            Log.d(TAG, "onTouchEvent: kkkkkk");
+        }
 
         return false;
     }
 
+    public void setTopDistance(int topDistance) {
+        this.mTopDistance = topDistance;
+    }
 
     /**
      * 检测子View需要滑动吗
@@ -162,7 +199,7 @@ public class SunView extends ViewGroup {
             case MotionEvent.ACTION_MOVE:
                 if (STATE != -1) {
                     int offsetY = y - mLastY;
-                    scrollBy(0, (int) -Math.log1p(offsetY));
+                    scrollBy(0, (int) -Math.log10(offsetY));
                 }
                 break;
             case MotionEvent.ACTION_UP:
@@ -184,6 +221,10 @@ public class SunView extends ViewGroup {
         invalidate();
     }
 
+    private int getRealScrollDistance(int offset) {
+        return 300/offset - mTopDistance;
+    }
+
     /**
      * 手指抬起的动作
      *
@@ -194,10 +235,10 @@ public class SunView extends ViewGroup {
         int scrollY = getScrollY();
         int y = (int) ev.getY();
         int offsetY = y - mLastY;
-        if (offsetY > TOP_DISTANCE * 3) {
+        if (offsetY > mTopDistance * 3) {
             //刷新状态
             STATE = -1;
-            scrollY = getScrollY() + TOP_DISTANCE;
+            scrollY = getScrollY() + mTopDistance;
             mScroller.startScroll(
                     getScrollX(),
                     getScrollY(),

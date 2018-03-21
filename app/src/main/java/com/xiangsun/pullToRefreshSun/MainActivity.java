@@ -9,7 +9,10 @@ import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 
 import com.xiangsun.core_view.SunView;
 import com.xiangsun.core_view.SunViewListener;
@@ -24,6 +27,9 @@ public class MainActivity extends AppCompatActivity {
     private ImageView mImageView;
     private RecyclerView mRecyclerView;
     private SunView mSunView;
+
+
+    private View mTopView;
 
 
     private Handler handler = new Handler() {
@@ -49,6 +55,13 @@ public class MainActivity extends AppCompatActivity {
         mRecyclerView.setAdapter(new TestAdapter());
         mRecyclerView.setLayoutManager(new LinearLayoutManager(this, VERTICAL, false));
 
+        LayoutInflater layoutInflater = LayoutInflater.from(this);
+        mTopView = layoutInflater.inflate(R.layout.topview, null);
+
+
+        mSunView.setTopDistance(mTopView.getHeight());
+
+
         mSunView.setSunViewListener(new SunViewListener() {
             @Override
             public void onRefresh() {
@@ -72,6 +85,9 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+        mSunView.setTopView(mTopView);
+
+
     }
 
     @Override
