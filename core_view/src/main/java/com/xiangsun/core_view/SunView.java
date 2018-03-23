@@ -1,15 +1,16 @@
 package com.xiangsun.core_view;
 
 import android.content.Context;
-import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.media.Image;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
-import android.widget.RelativeLayout;
+import android.widget.ImageView;
 import android.widget.Scroller;
 
 /**
@@ -32,6 +33,12 @@ public class SunView extends ViewGroup {
     private Scroller mScroller;
     private SunViewListener mSunViewListener;
 
+    private int mMode;
+
+    public final static int ATTACH = 1;
+    public final static int COVER = 2;
+
+    private int mBitmapID;
 
     /**
      * view当前的状态
@@ -44,7 +51,7 @@ public class SunView extends ViewGroup {
     /**
      * 距离顶端的距离
      */
-    private int mTopDistance = 300;
+    private int mTopDistance = 100;
 
     public SunView(Context context) {
         super(context);
@@ -66,10 +73,23 @@ public class SunView extends ViewGroup {
 
     public void setTopView(View topView) {
         this.mTopView = topView;
-
-
-
     }
+
+    public void setBitmap(int bitmapID) {
+        this.mBitmapID = bitmapID;
+    }
+
+
+//    onFinishInflate() ----
+//    onAttachedToWindow ----
+//    onMeasure ----
+//    onMeasure ----
+//    onSizeChanged =  w = 1080  h = 135  oldW = 0  oldH = 0
+//    onLayout ----
+//    onMeasure ----
+//    onLayout ----
+//    onDraw ----
+//    dispatchDraw =
 
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
@@ -79,21 +99,20 @@ public class SunView extends ViewGroup {
             mSonView = childView;
             childView.layout(l, t, r, b);
         }
-        RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(
-                LayoutParams.WRAP_CONTENT,
-                LayoutParams.WRAP_CONTENT);
-        if(mSonView == null) {
-            Log.d(TAG, "setTopView: nllllllllllll");
-        }
-        layoutParams.addRule(RelativeLayout.ABOVE, mSonView.getId());
         if(mTopView !=null) {
-            if(mTopView.getParent() !=null)
-                ((ViewGroup)mTopView.getParent()).removeView(mTopView);
-            mTopView.layout(l, -mTopView.getHeight(), r,0);
-            addView(mTopView);
-        }else {
-            Log.d(TAG, "onLayout: mtopview is null");
+            Log.d(TAG, "onLayout: mode"+mMode);
+            if(mMode == ATTACH) {
+                attachView(l,r);
+            }else if(mMode == COVER) {
+                coverView(l,r);
+            }
+
         }
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
     }
 
     @Override
@@ -104,7 +123,6 @@ public class SunView extends ViewGroup {
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
-        Log.e(TAG, "onInterceptTouchEvent: ");
         Log.d(TAG, "onInterceptTouchEvent: " + canChildScrollDown());
 
         if (scrollDirection(ev) == -1 && !canChildScrollDown()) {
@@ -134,6 +152,10 @@ public class SunView extends ViewGroup {
 
     public void setTopDistance(int topDistance) {
         this.mTopDistance = topDistance;
+    }
+
+    public void setMode(int mode) {
+        this.mMode = mode;
     }
 
     /**
@@ -199,7 +221,19 @@ public class SunView extends ViewGroup {
             case MotionEvent.ACTION_MOVE:
                 if (STATE != -1) {
                     int offsetY = y - mLastY;
-                    scrollBy(0, (int) -Math.log10(offsetY));
+                    //向下 getScrollY <0; 向上getScrollY>0
+                    Log.d(TAG, "scrollWithFinger: " + getScrollY());
+                    if(getScrollY() < 0 || offsetY >= 0){
+                        scrollBy(0, -offsetY/3);
+                    }else {
+                        mScroller.startScroll(
+                                getScrollX(),
+                                getScrollY(),
+                                -getScrollX(),
+                                -getScrollY());
+                        invalidate();
+                    }
+                    mLastY = y;
                 }
                 break;
             case MotionEvent.ACTION_UP:
@@ -221,10 +255,6 @@ public class SunView extends ViewGroup {
         invalidate();
     }
 
-    private int getRealScrollDistance(int offset) {
-        return 300/offset - mTopDistance;
-    }
-
     /**
      * 手指抬起的动作
      *
@@ -233,29 +263,18 @@ public class SunView extends ViewGroup {
     private void moveUp(MotionEvent ev) {
         // 手指离开时，执行滑动过程
         int scrollY = getScrollY();
-        int y = (int) ev.getY();
-        int offsetY = y - mLastY;
-        if (offsetY > mTopDistance * 3) {
+        if ((-scrollY) > mTopDistance) {
             //刷新状态
             STATE = -1;
             scrollY = getScrollY() + mTopDistance;
-            mScroller.startScroll(
-                    getScrollX(),
-                    getScrollY(),
-                    -getScrollX(),
-                    -scrollY);
-            invalidate();
             startRefresh();
-        } else {
-            //恢复
-            mScroller.startScroll(
-                    getScrollX(),
-                    getScrollY(),
-                    -getScrollX(),
-                    -scrollY);
-            invalidate();
         }
-
+        mScroller.startScroll(
+                getScrollX(),
+                getScrollY(),
+                -getScrollX(),
+                -scrollY);
+        invalidate();
     }
 
     /**
@@ -263,8 +282,29 @@ public class SunView extends ViewGroup {
      *
      */
     private void startRefresh() {
-
         mSunViewListener.onRefresh();
+    }
+
+    /**
+     * TopView 以连接的方式加入ViewGroup
+     *
+     * @param l 左边的距离
+     * @param r 右边的距离
+     */
+    private void attachView(int l, int r){
+        if(mTopView.getParent() !=null)
+            ((ViewGroup)mTopView.getParent()).removeView(mTopView);
+        mTopView.layout(l, -mTopView.getHeight(), r,0);
+        Log.d(TAG, "attachView: height22:" + mTopView.getHeight());
+        addView(mTopView);
+    }
+
+    private void coverView(int l, int r){
+        ViewGroup parent = (ViewGroup)getParent();
+        if (parent != null) {
+            parent.setBackgroundResource(mBitmapID);
+        }
+
     }
 
 }
