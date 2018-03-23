@@ -1,16 +1,19 @@
 package com.xiangsun.core_view;
 
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.media.Image;
+import android.graphics.Color;
+import android.graphics.LinearGradient;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.RectF;
+import android.graphics.Shader;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.Scroller;
 
 /**
@@ -25,6 +28,7 @@ public class SunView extends ViewGroup {
 
     private View mSonView;
     private View mTopView;
+    private SunTextView mSunTextView;
 
     //上一次下拉距离
     private int mLastY;
@@ -34,9 +38,14 @@ public class SunView extends ViewGroup {
     private SunViewListener mSunViewListener;
 
     private int mMode;
+    private int mRefrshMode = PULL_DOWN_REFRESH;
 
     public final static int ATTACH = 1;
     public final static int COVER = 2;
+
+    public final static int PULL_UP_REFRESH = 1;
+    public final static int PULL_DOWN_REFRESH = 2;
+    public final static int BOTH_REFRESH = 3;
 
     private int mBitmapID;
 
@@ -61,6 +70,7 @@ public class SunView extends ViewGroup {
         super(context, attrs);
         mScroller = new Scroller(getContext());
         mContext = context;
+        mSunTextView = new SunTextView(context, attrs);
     }
 
     public SunView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
@@ -77,6 +87,29 @@ public class SunView extends ViewGroup {
 
     public void setBitmap(int bitmapID) {
         this.mBitmapID = bitmapID;
+    }
+
+    public void setText(String text) {
+        this.mSunTextView.setText(text);
+    }
+
+    public void setTextSize(float size) {
+        this.mSunTextView.setTextSize(size);
+    }
+
+    public void setSpeed(int speed) {
+        this.mSunTextView.setSpeed(speed);
+    }
+    public void setTopDistance(int topDistance) {
+        this.mTopDistance = topDistance;
+    }
+
+    public void setTopViewMode(int mode) {
+        this.mMode = mode;
+    }
+
+    public void setRefreshMode(int mode) {
+        this.mRefrshMode = mode;
     }
 
 
@@ -116,6 +149,11 @@ public class SunView extends ViewGroup {
     }
 
     @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+    }
+
+    @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
         Log.e(TAG, "dispatchTouchEvent: ");
         return super.dispatchTouchEvent(ev);
@@ -138,25 +176,12 @@ public class SunView extends ViewGroup {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        Log.e(TAG, "onTouchEvent: 到里面了");
         if (mNeedRefresh)
             scrollWithFinger(event);
-        if(mTopView != null) {
-            Log.d(TAG, "onTouchEvent: " +getLeft() + ":"+getRight()+":"+ mTopView.getTop()+ ":" + mTopView.getBottom());
-        }else {
-            Log.d(TAG, "onTouchEvent: kkkkkk");
-        }
-
         return false;
     }
 
-    public void setTopDistance(int topDistance) {
-        this.mTopDistance = topDistance;
-    }
 
-    public void setMode(int mode) {
-        this.mMode = mode;
-    }
 
     /**
      * 检测子View需要滑动吗
@@ -222,16 +247,18 @@ public class SunView extends ViewGroup {
                 if (STATE != -1) {
                     int offsetY = y - mLastY;
                     //向下 getScrollY <0; 向上getScrollY>0
-                    Log.d(TAG, "scrollWithFinger: " + getScrollY());
-                    if(getScrollY() < 0 || offsetY >= 0){
-                        scrollBy(0, -offsetY/3);
-                    }else {
-                        mScroller.startScroll(
-                                getScrollX(),
-                                getScrollY(),
-                                -getScrollX(),
-                                -getScrollY());
-                        invalidate();
+                    if(mRefrshMode == PULL_DOWN_REFRESH) {
+                        if (getScrollY() < 0 || offsetY >= 0) {
+                            scrollBy(0, -offsetY / 2);
+                        } else {
+                            //如果sonView归位了还继续往上滑动。
+                            mScroller.startScroll(
+                                    getScrollX(),
+                                    getScrollY(),
+                                    -getScrollX(),
+                                    -getScrollY());
+                            invalidate();
+                        }
                     }
                     mLastY = y;
                 }
@@ -256,7 +283,7 @@ public class SunView extends ViewGroup {
     }
 
     /**
-     * 手指抬起的动作
+     * 手指抬起的动作，上滑到指定位置，或者到顶。
      *
      * @param ev
      */
@@ -278,7 +305,7 @@ public class SunView extends ViewGroup {
     }
 
     /**
-     * 调用设置的回掉，开始刷新
+     * 调用设置的回掉，动画开始，开始刷新
      *
      */
     private void startRefresh() {
@@ -297,14 +324,32 @@ public class SunView extends ViewGroup {
         mTopView.layout(l, -mTopView.getHeight(), r,0);
         Log.d(TAG, "attachView: height22:" + mTopView.getHeight());
         addView(mTopView);
+        startAnim(l,r);
     }
 
     private void coverView(int l, int r){
         ViewGroup parent = (ViewGroup)getParent();
         if (parent != null) {
+            if(mSonView.getBackground() == null){
+                mSonView.setBackgroundColor(Color.WHITE);
+            }
             parent.setBackgroundResource(mBitmapID);
         }
+        startAnim(l, r);
 
+    }
+
+
+
+    private void startAnim(int l, int r) {
+        ViewGroup parent = (ViewGroup)mSunTextView.getParent();
+        if(parent != null) {
+            parent.removeView(mSunTextView);
+        }
+        Log.d(TAG, "startAnim: "+ getMeasuredWidth() + ":" + mSunTextView.getWidth());
+        mSunTextView.layout(getMeasuredWidth()/2 - 100, -mTopDistance-20, r,0);
+        Log.d(TAG, "startAnim: height22:" + mSunTextView.getWidth());
+        addView(mSunTextView);
     }
 
 }

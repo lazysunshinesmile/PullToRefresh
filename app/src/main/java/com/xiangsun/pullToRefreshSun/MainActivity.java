@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
@@ -65,8 +66,10 @@ public class MainActivity extends AppCompatActivity {
 
         mSunView.setTopView(mTopView);
         mSunView.setTopDistance(100);
-        mSunView.setMode(SunView.COVER);
-        mSunView.setBitmap( R.mipmap.topimage);
+        mSunView.setTopViewMode(SunView.ATTACH);
+        mSunView.setBitmap(R.mipmap.topimage);
+        mSunView.setText("请稍等");
+        mSunView.setTextSize(60);
 
         mSunView.setSunViewListener(new SunViewListener() {
             @Override
@@ -91,7 +94,6 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-        mSunView.setTopView(mTopView);
 
 
     }
