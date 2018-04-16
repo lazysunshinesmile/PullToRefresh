@@ -3,11 +3,6 @@ package com.xiangsun.core_view;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.LinearGradient;
-import android.graphics.Matrix;
-import android.graphics.Paint;
-import android.graphics.RectF;
-import android.graphics.Shader;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -77,37 +72,79 @@ public class SunView extends ViewGroup {
         super(context, attrs, defStyleAttr);
     }
 
+    /**
+     * 设置SunView的监听器
+     * @param mSunViewListener 松手刷新的动作
+     */
     public void setSunViewListener(SunViewListener mSunViewListener) {
         this.mSunViewListener = mSunViewListener;
     }
 
+    /**
+     * 显示的动画
+     * @param topView
+     */
     public void setTopView(View topView) {
         this.mTopView = topView;
     }
 
+    /**
+     * 设置上端显示的图片
+     * @param bitmapID
+     */
     public void setBitmap(int bitmapID) {
         this.mBitmapID = bitmapID;
+        mTopView.setBackgroundResource(bitmapID);
     }
 
+    /**
+     * 设置下拉时显示的文字
+     * @param text
+     */
     public void setText(String text) {
         this.mSunTextView.setText(text);
     }
 
+    /**
+     * 设置下拉时显示文字大小
+     * @param size
+     */
     public void setTextSize(float size) {
         this.mSunTextView.setTextSize(size);
     }
 
+    /**
+     * 设置随手指移动的速度
+     * @param speed
+     */
     public void setSpeed(int speed) {
         this.mSunTextView.setSpeed(speed);
     }
+
+    /**
+     * 设置距离上端的距离
+     * @param topDistance
+     */
     public void setTopDistance(int topDistance) {
         this.mTopDistance = topDistance;
     }
 
+    /**
+     * 设置上端图片或者动画显示的方式
+     * @param mode: (1)SunView.ATTACH : 伴随下拉动作，下拉会把背景拽出来，边拉边显示
+     *             （2）SunView.COVER : 覆盖在 背景上，下拉会慢慢显示出来。
+     *
+     * @param mode
+     */
     public void setTopViewMode(int mode) {
         this.mMode = mode;
     }
 
+    /**
+     *
+     * @param mode : @PULL_DOWN_REFRESH 下拉刷新
+     *              @PULL_UP_REFRESH 上拉刷新
+     */
     public void setRefreshMode(int mode) {
         this.mRefrshMode = mode;
     }
@@ -168,7 +205,7 @@ public class SunView extends ViewGroup {
             mNeedRefresh = true;
             return true;
         } else {
-            mNeedRefresh = true;
+            mNeedRefresh = false;
             return false;
         }
     }
@@ -259,6 +296,19 @@ public class SunView extends ViewGroup {
                                     -getScrollY());
                             invalidate();
                         }
+                    }else if(mRefrshMode == PULL_UP_REFRESH) {
+                        if (getScrollY() > 0 || offsetY >= 0) {
+                            scrollBy(0, -offsetY / 2);
+                        } else {
+                            //如果sonView归位了还继续往上滑动。
+                            mScroller.startScroll(
+                                    getScrollX(),
+                                    getScrollY(),
+                                    -getScrollX(),
+                                    -getScrollY());
+                            invalidate();
+                        }
+
                     }
                     mLastY = y;
                 }
@@ -323,6 +373,7 @@ public class SunView extends ViewGroup {
             ((ViewGroup)mTopView.getParent()).removeView(mTopView);
         mTopView.layout(l, -mTopView.getHeight(), r,0);
         Log.d(TAG, "attachView: height22:" + mTopView.getHeight());
+        mTopView.setBackgroundResource(mBitmapID);
         addView(mTopView);
         startAnim(l,r);
     }
@@ -333,7 +384,8 @@ public class SunView extends ViewGroup {
             if(mSonView.getBackground() == null){
                 mSonView.setBackgroundColor(Color.WHITE);
             }
-            parent.setBackgroundResource(mBitmapID);
+            Log.e(TAG, "coverView: this is set bagroud");
+            mSonView.setBackgroundResource(mBitmapID);
         }
         startAnim(l, r);
 

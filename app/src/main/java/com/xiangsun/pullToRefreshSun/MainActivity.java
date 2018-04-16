@@ -34,6 +34,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     private View mTopView;
+    private ImageView mTopImage;
 
 
     private Handler handler = new Handler() {
@@ -63,11 +64,13 @@ public class MainActivity extends AppCompatActivity {
         mTopView = layoutInflater.inflate(R.layout.topview, null);
         Log.d("TAG", "onCreate: " + mTopView.getHeight());
 
+        mTopImage = mTopView.findViewById(R.id.top_image);
+        mTopImage.setImageResource(R.mipmap.big1);
 
         mSunView.setTopView(mTopView);
         mSunView.setTopDistance(100);
         mSunView.setTopViewMode(SunView.ATTACH);
-        mSunView.setBitmap(R.mipmap.topimage);
+
         mSunView.setText("请稍等");
         mSunView.setTextSize(60);
 
@@ -94,6 +97,9 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+        mSunView.setBitmap(R.mipmap.small1);
+        mSunView.setTopDistance(200);
+//        mSunView.setRefreshMode(mSunView.PULL_UP_REFRESH);
 
 
     }
